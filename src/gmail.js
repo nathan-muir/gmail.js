@@ -268,7 +268,7 @@ var Gmail = function(localJQuery) {
 
 
   api.check.is_inside_email = function() {
-    if(api.get.current_page() != 'email' && !api.check.is_preview_pane()) {
+    if(api.get.current_page() !== 'email' && !api.check.is_preview_pane()) {
       return false;
     }
 
@@ -1519,8 +1519,7 @@ var Gmail = function(localJQuery) {
   }
 
 
-  api.helper.get.visible_emails_pre = function() {
-    var page = api.get.current_page();
+  api.helper.get.visible_emails_pre = function(page) {
     var url = window.location.origin + window.location.pathname + '?ui=2&ik=' + api.tracker.ik+'&rid=' + api.tracker.rid + '&view=tl&start=0&num=120&rt=1';
 
     if(page.indexOf('label/') == 0) {
@@ -1575,7 +1574,12 @@ var Gmail = function(localJQuery) {
 
 
   api.get.visible_emails = function() {
-    var url = api.helper.get.visible_emails_pre();
+    var page = api.get.current_page();
+    if (page === 'email'){
+      api.tools.error('visible_emails() wont work when inside a message');
+      return [];
+    }
+    var url = api.helper.get.visible_emails_pre(page);
     var get_data = api.tools.make_request(url);
     var emails = api.helper.get.visible_emails_post(get_data);
 
@@ -1584,7 +1588,14 @@ var Gmail = function(localJQuery) {
 
 
   api.get.visible_emails_async = function(callback) {
-    var url = api.helper.get.visible_emails_pre();
+    var page = api.get.current_page();
+    if (page === 'email'){
+      api.tools.error('visible_emails_async() wont work when inside a message');
+      callback([]);
+      return;
+    }
+
+    var url = api.helper.get.visible_emails_pre(page);
     api.tools.make_request_async(url, 'GET', function(get_data) {
       var emails = api.helper.get.visible_emails_post(get_data);
       callback(emails);
@@ -1614,20 +1625,11 @@ var Gmail = function(localJQuery) {
 
   api.get.current_page = function() {
     var hash  = window.location.hash.split('#').pop().split('?').shift() || 'inbox';
-    var pages = ['sent', 'inbox', 'starred', 'drafts', 'imp', 'chats', 'all', 'spam', 'trash',
-                 'settings', 'label', 'category', 'circle', 'search'];
-
-    var page = null;
-
-    if($.inArray(hash, pages) > -1) {
-      page = hash;
+    // Any page ending in a message id, is an "email".
+    if(/\/[a-f0-9]{16}$/.test(hash)) {
+      return 'email';
     }
-
-    if(hash.indexOf('inbox/') !== -1) {
-      page = 'email';
-    }
-
-    return page || hash;
+    return hash;
   }
 
 
